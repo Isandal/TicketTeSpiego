@@ -501,4 +501,7 @@ def main():
             st.error("Unknown Role")
 
 if __name__ == "__main__":
+    # Initialize Database and Dummy Data on startup
+    db.init_db()
+    db.populate_dummy_data()
     main()
