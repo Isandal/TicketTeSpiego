@@ -296,7 +296,7 @@ def admin_dashboard():
     st.sidebar.title(f"👑 {st.session_state.user['Username']}")
     st.sidebar.caption("Administrator")
     
-    menu = st.sidebar.radio("Menu", ["Manage Technicians", "Manage Clients", "View Users"])
+    menu = st.sidebar.radio("Menu", ["Manage Technicians", "Manage Clients", "View Users", "Admin Profile"])
     
     if st.sidebar.button("Logout"):
         logout()
@@ -346,6 +346,7 @@ def admin_dashboard():
             if selected_tech_name:
                 selected_tech = tech_options[selected_tech_name]
                 with st.form("edit_tech_form"):
+                    st.markdown("#### Profile Details")
                     col1, col2 = st.columns(2)
                     with col1:
                         new_first_name = st.text_input("First Name", value=selected_tech['FirstName'])
@@ -354,13 +355,23 @@ def admin_dashboard():
                         new_email = st.text_input("Email", value=selected_tech['Email'])
                         new_phone = st.text_input("Phone", value=selected_tech['Phone'])
                     
+                    st.markdown("#### Credentials (Optional)")
+                    col3, col4 = st.columns(2)
+                    with col3:
+                        new_username = st.text_input("Username", value=selected_tech['Username'])
+                    with col4:
+                        new_password = st.text_input("New Password (leave blank to keep current)", type="password")
+
                     update_submitted = st.form_submit_button("Update Technician")
                     
                     if update_submitted:
-                        db.update_technician_profile(selected_tech['ID'], new_first_name, new_last_name, new_email, new_phone)
-                        st.success("Technician updated successfully!")
-                        time.sleep(1)
-                        st.rerun()
+                        success, msg = db.update_technician_profile(selected_tech['ID'], new_first_name, new_last_name, new_email, new_phone, new_username, new_password)
+                        if success:
+                            st.success(msg)
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(msg)
 
     elif menu == "Manage Clients":
         st.title("🏢 Manage Clients")
@@ -407,6 +418,7 @@ def admin_dashboard():
             if selected_client_name:
                 selected_client = client_options[selected_client_name]
                 with st.form("edit_client_form"):
+                    st.markdown("#### Profile Details")
                     col1, col2 = st.columns(2)
                     with col1:
                         new_company_name = st.text_input("Company Name", value=selected_client['CompanyName'])
@@ -415,13 +427,23 @@ def admin_dashboard():
                         new_address = st.text_input("Address", value=selected_client['Address'])
                         new_phone = st.text_input("Phone", value=selected_client['Phone'])
                     
+                    st.markdown("#### Credentials (Optional)")
+                    col3, col4 = st.columns(2)
+                    with col3:
+                        new_username = st.text_input("Username", value=selected_client['Username'])
+                    with col4:
+                        new_password = st.text_input("New Password (leave blank to keep current)", type="password")
+                    
                     update_submitted = st.form_submit_button("Update Client")
                     
                     if update_submitted:
-                        db.update_client_profile(selected_client['ID'], new_company_name, new_email, new_address, new_phone)
-                        st.success("Client updated successfully!")
-                        time.sleep(1)
-                        st.rerun()
+                        success, msg = db.update_client_profile(selected_client['ID'], new_company_name, new_email, new_address, new_phone, new_username, new_password)
+                        if success:
+                            st.success(msg)
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(msg)
 
     elif menu == "View Users":
         st.title("👥 All Users")
@@ -433,6 +455,36 @@ def admin_dashboard():
             user_list.append({'ID': u['ID'], 'Username': u['Username'], 'Role': u['Role']})
             
         st.dataframe(user_list, use_container_width=True)
+
+    elif menu == "Admin Profile":
+        st.title("👤 Admin Profile")
+        user = st.session_state.user
+        
+        with st.form("admin_profile_form"):
+            st.subheader("Update Credentials")
+            new_username = st.text_input("Username", value=user['Username'])
+            new_password = st.text_input("New Password (leave blank to keep current)", type="password")
+            
+            submitted = st.form_submit_button("Update Profile")
+            
+            if submitted:
+                success, msg = db.update_user_credentials(user['ID'], new_username, new_password)
+                if success:
+                    st.success(msg)
+                    if new_password:
+                        st.info("Password changed. Please log in again.")
+                        time.sleep(2)
+                        logout()
+                    else:
+                        # Update session state username if changed
+                        st.session_state.user = db.authenticate_user(new_username, user['Password']) # Re-fetch user? No password might be hashed.
+                        # Easier to just force re-login or manually update session dict if we knew the password wasn't changed.
+                        # But if username changed, we should probably re-login to be safe/clean.
+                        st.info("Profile updated. Please log in again.")
+                        time.sleep(2)
+                        logout()
+                else:
+                    st.error(msg)
 
 # --- Main Routing ---
 def main():

@@ -238,21 +238,91 @@ def get_all_clients():
     conn.close()
     return clients
 
-def update_technician_profile(tech_id, first_name, last_name, email, phone):
+def update_technician_profile(tech_id, first_name, last_name, email, phone, new_username=None, new_password=None):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("UPDATE Technicians SET FirstName = ?, LastName = ?, Email = ?, Phone = ? WHERE ID = ?",
-              (first_name, last_name, email, phone, tech_id))
-    conn.commit()
-    conn.close()
+    
+    try:
+        # Update Profile
+        c.execute("UPDATE Technicians SET FirstName = ?, LastName = ?, Email = ?, Phone = ? WHERE ID = ?",
+                  (first_name, last_name, email, phone, tech_id))
+        
+        # Get UserID
+        c.execute("SELECT UserID FROM Technicians WHERE ID = ?", (tech_id,))
+        user_id = c.fetchone()['UserID']
+        
+        # Update Credentials if provided
+        if new_username:
+             c.execute("UPDATE Users SET Username = ? WHERE ID = ?", (new_username, user_id))
+        
+        if new_password:
+            hashed_pw = hash_password(new_password)
+            c.execute("UPDATE Users SET Password = ? WHERE ID = ?", (hashed_pw, user_id))
+            
+        conn.commit()
+        return True, "Technician updated successfully."
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return False, "Username already exists."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+    finally:
+        conn.close()
 
-def update_client_profile(client_id, company_name, email, address, phone):
+def update_client_profile(client_id, company_name, email, address, phone, new_username=None, new_password=None):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("UPDATE Clients SET CompanyName = ?, Email = ?, Address = ?, Phone = ? WHERE ID = ?",
-              (company_name, email, address, phone, client_id))
-    conn.commit()
-    conn.close()
+    
+    try:
+        # Update Profile
+        c.execute("UPDATE Clients SET CompanyName = ?, Email = ?, Address = ?, Phone = ? WHERE ID = ?",
+                  (company_name, email, address, phone, client_id))
+        
+        # Get UserID
+        c.execute("SELECT UserID FROM Clients WHERE ID = ?", (client_id,))
+        user_id = c.fetchone()['UserID']
+        
+        # Update Credentials if provided
+        if new_username:
+             c.execute("UPDATE Users SET Username = ? WHERE ID = ?", (new_username, user_id))
+        
+        if new_password:
+            hashed_pw = hash_password(new_password)
+            c.execute("UPDATE Users SET Password = ? WHERE ID = ?", (hashed_pw, user_id))
+            
+        conn.commit()
+        return True, "Client updated successfully."
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return False, "Username already exists."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+    finally:
+        conn.close()
+
+def update_user_credentials(user_id, new_username, new_password=None):
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        if new_username:
+            c.execute("UPDATE Users SET Username = ? WHERE ID = ?", (new_username, user_id))
+        
+        if new_password:
+            hashed_pw = hash_password(new_password)
+            c.execute("UPDATE Users SET Password = ? WHERE ID = ?", (hashed_pw, user_id))
+            
+        conn.commit()
+        return True, "Credentials updated successfully."
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return False, "Username already exists."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+    finally:
+        conn.close()
 
 def create_work_log(technician_id, client_id, start_datetime, duration_minutes, description, intervention_type):
     conn = get_db_connection()
